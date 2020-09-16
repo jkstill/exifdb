@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"args"
 	"os"
+	"io"
 	"verbose"
 	"path/filepath"	
+	"github.com/rwcarlsen/goexif/exif"
+	"github.com/rwcarlsen/goexif/tiff"
 )
 
 var matchNames = []string{ 
@@ -25,6 +28,15 @@ var matchNames = []string{
 	"*.WMV",
 	"*.mov",
 	"*.MOV",
+	"*.tiff",
+	"*.TIFF",
+}
+
+type Printer struct{}
+
+func (p Printer) Walk(name exif.FieldName, tag *tiff.Tag) error {
+	fmt.Printf("%40s: %s\n", name, tag)
+	return nil
 }
 
 func getFile(fp string, fi os.FileInfo, err error) error {
@@ -39,7 +51,29 @@ func getFile(fp string, fi os.FileInfo, err error) error {
 			return err
 		}
 		if matched {
+
+			f, err := os.Open(fp)
+
+			if err != nil {
+				fmt.Println("error opening " + fp)
+				fmt.Println(err)
+				return err
+			}
+
+			x, err := exif.Decode(f)
+			if err != nil {
+				if err == io.EOF { return nil }
+				fmt.Println("error decoding " + fp)
+				fmt.Println(err)
+				return nil
+			}
+
 			fmt.Println(fp)
+
+			var p Printer
+			x.Walk(p)
+
+			fmt.Println("==============================")
 			return nil
 		}
 	}
@@ -67,7 +101,6 @@ func main() {
 
 	filepath.Walk(args.GetDir(&cmdArgs), getFile)
 }
-
 
 
 
